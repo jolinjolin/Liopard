@@ -1,0 +1,6 @@
+name: liopard
+dependencies:
+- python=3
+- pandas
+- jupyter
+- pytest
