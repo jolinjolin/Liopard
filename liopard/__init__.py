@@ -36,6 +36,11 @@ class DataFrame:
 
     def _convert_unicode_to_object(self, data):
         new_data = {}
+        for key, value in data.items():
+            if value.dtype.kind == 'U':
+                new_data[key] = value.astype('object')
+            else:
+                new_data[key] = value
         return new_data
 
     def __len__(self):
