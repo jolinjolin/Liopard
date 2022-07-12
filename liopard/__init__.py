@@ -142,16 +142,90 @@ class DataFrame:
         return DataFrame(new_data)
 
     def __getitem__(self, item):
-        pass
+        if isinstance(item, str):
+            return DataFrame({item: self._data[item]})
+        if isinstance(item, list):
+            return DataFrame({col: self._data[col] for col in item})
+        if isinstance(item, DataFrame):
+            if item.shape[1] != 1:
+                raise ValueError('item must be a one-column DataFrame')
+            arr = next(iter(item._data.values()))
+            if arr.dtype.kind != 'b':
+                raise ValueError('item must be a one-column boolean DataFrame')
+            return DataFrame({col: value[arr] for col, value in self._data.items()})
+        if isinstance(item, tuple):
+            return self._getitem_tuple(item)
+        raise TypeError('Must pass a string, list, DataFrame, or tuple')
 
     def _getitem_tuple(self, item):
-        pass
+        if len(item) != 2:
+            raise ValueError('Pass a string or a tuple')
+
+        row_selection, col_selection = item
+        if isinstance(row_selection, int):
+            row_selection = [row_selection]
+        elif isinstance(row_selection, DataFrame):
+            if row_selection.shape[1] != 1:
+                raise ValueError(
+                    'Row selection must be a one column DataFrame')
+            row_selection = next(iter(row_selection._data.values()))
+            if row_selection.dtype.kind != 'b':
+                raise TypeError('Row selection must be a boolean DataFrame')
+        elif not isinstance(row_selection, (list, slice)):
+            raise TypeError(
+                'Row selection must be an int, slice, list, or DataFrame')
+
+        if isinstance(col_selection, int):
+            col_selection = [self.columns[col_selection]]
+        elif isinstance(col_selection, str):
+            col_selection = [col_selection]
+        elif isinstance(col_selection, list):
+            new_col_selction = []
+            for col in col_selection:
+                if isinstance(col, int):
+                    new_col_selction.append(self.columns[col])
+                else:
+                    new_col_selction.append(col)
+            col_selection = new_col_selction
+        elif isinstance(col_selection, slice):
+            start, stop, step = col_selection.start, col_selection.stop, col_selection.step
+            if isinstance(start, str):
+                start = self.columns.index(col_selection.start)
+            if isinstance(stop, str):
+                stop = self.columns.index(col_selection.stop) + 1
+            col_selection = self.columns[start:stop:step]
+        else:
+            raise TypeError('Column selection must be either an int, string, list, or slice')
+
+        new_data = {}
+        for col in col_selection:
+            new_data[col] = self._data[col][row_selection]
+        return DataFrame(new_data)
 
     def _ipython_key_completions_(self):
-        pass
+        return self.columns
 
     def __setitem__(self, key, value):
-        pass
+        if not isinstance(key, str):
+            raise NotImplementedError('Seting column only set a single column')
+        if isinstance(value, np.ndarray):
+            if value.ndim != 1:
+                raise ValueError('The numpy array must be one-dimensional')
+            if len(value) != len(self):
+                raise ValueError('The length of setting array must be the same length as the DataFrame')
+        elif isinstance(value, DataFrame):
+            if value.shape[1] != 1:
+                raise ValueError('Setting DataFrame must tbe one column')
+            if len(value) != len(self):
+                raise ValueError('Setting DataFrame must be the same length as the DataFrame')
+            value = next(iter(value._data.values()))
+        elif isinstance(value,(int, bool, str, float)):
+            value = np.repeat(value, len(self))
+        else:
+            raise TypeError('Setting object must be array, DataFrame, int, bool, str, or float')
+        if value.dtype.kind == 'U':
+            value = value.astype('object')
+        self._data[key] = value
 
     def head(self, n=5):
         pass
