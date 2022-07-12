@@ -1,3 +1,4 @@
+from operator import index
 from typing import TYPE_CHECKING
 import numpy as np
 
@@ -195,7 +196,8 @@ class DataFrame:
                 stop = self.columns.index(col_selection.stop) + 1
             col_selection = self.columns[start:stop:step]
         else:
-            raise TypeError('Column selection must be either an int, string, list, or slice')
+            raise TypeError(
+                'Column selection must be either an int, string, list, or slice')
 
         new_data = {}
         for col in col_selection:
@@ -212,26 +214,29 @@ class DataFrame:
             if value.ndim != 1:
                 raise ValueError('The numpy array must be one-dimensional')
             if len(value) != len(self):
-                raise ValueError('The length of setting array must be the same length as the DataFrame')
+                raise ValueError(
+                    'The length of setting array must be the same length as the DataFrame')
         elif isinstance(value, DataFrame):
             if value.shape[1] != 1:
                 raise ValueError('Setting DataFrame must tbe one column')
             if len(value) != len(self):
-                raise ValueError('Setting DataFrame must be the same length as the DataFrame')
+                raise ValueError(
+                    'Setting DataFrame must be the same length as the DataFrame')
             value = next(iter(value._data.values()))
-        elif isinstance(value,(int, bool, str, float)):
+        elif isinstance(value, (int, bool, str, float)):
             value = np.repeat(value, len(self))
         else:
-            raise TypeError('Setting object must be array, DataFrame, int, bool, str, or float')
+            raise TypeError(
+                'Setting object must be array, DataFrame, int, bool, str, or float')
         if value.dtype.kind == 'U':
             value = value.astype('object')
         self._data[key] = value
 
     def head(self, n=5):
-        pass
+        return self[:n, :]
 
     def tail(self, n=5):
-        pass
+        return self[-n:, :]
 
     def min(self):
         return self._agg(np.min)
@@ -267,22 +272,60 @@ class DataFrame:
         return self._agg(np.argmin)
 
     def _agg(self, aggfunc):
-        pass
+        new_data = {}
+        for col, value in self._data.items():
+            try:
+                new_data[col] = np.array([aggfunc([value])])
+            except TypeError:
+                pass
+        return DataFrame(new_data)
 
     def isna(self):
-        pass
+        new_data = {}
+        for col, value in self._data.items():
+            if value.dtype.kind == 'O':
+                new_data[col] = value == None
+            else:
+                new_data[col] = np.isnan(value)
+        return DataFrame(new_data)
 
     def count(self):
-        pass
+        df = self.isna()
+        new_data = {}
+        length = len(df)
+        for col, value in df._data.items():
+            new_data[col] = np.array([length - value.sum()])
+        return DataFrame(new_data)
 
     def unique(self):
-        pass
+        dfs = []
+        for col, value in self._data.items():
+            new_data = {col: np.unique(value)}
+            dfs.append(DataFrame(new_data))
+        if len(dfs) == 1:
+            return dfs[0]
+        return dfs
 
     def nunique(self):
-        pass
+        new_data = {}
+        for col, value in self._data.items():
+            new_data[col] = np.array([len(np.unique(value))])
+        return DataFrame(new_data)
 
     def value_counts(self, normalize=False):
-        pass
+        dfs = []
+        for col, value in self._data.items():
+            uniques, counts = np.unique(value, return_counts=True)
+            indexes = np.argsort(-counts)
+            uniques = uniques[indexes]
+            counts = counts[indexes]
+            if normalize:
+                counts = counts/len(self)
+            df = DataFrame({col: uniques, 'count': counts})
+            dfs.append(df)
+        if len(dfs) == 1:
+            return dfs[0]
+        return dfs
 
     def rename(self, columns):
         pass
