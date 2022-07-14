@@ -671,8 +671,35 @@ class StringMethods:
         return self._str_method(str.encode, col, encoding, errors)
 
     def _str_method(self, method, col, *args):
-        pass
+        value = self._df._data[col]
+        if value.dtype.kind != 'O':
+            raise TypeError('`str` accessor only works with strings')
+        new_vals = []
+        for val in value:
+            if val is None:
+                new_vals.append(None)
+            else:
+                new_vals.append(method(val, *args))
+        return DataFrame({col: np.array(new_vals)})
 
 
 def read_csv(fn):
-    pass
+    from collections import defaultdict
+    d = defaultdict(list)
+    with open(fn) as f:
+        header = f.readline()
+        column_names = header.strip('\n').split(',')
+        for line in f:
+            values = line.strip('\n').split(',')
+            for col, val in zip(column_names, values):
+                d[col].append(val)
+    new_data = {}
+    for col, vals in d.items():
+        try:
+            np.array(vals, dtype='int')
+        except ValueError:
+            try:
+                new_data[col] = np.array(vals, dtype='float')
+            except:
+                new_data[col] = np.array(vals, dtype='object')
+    return DataFrame(new_data)
