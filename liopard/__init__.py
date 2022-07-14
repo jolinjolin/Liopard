@@ -696,7 +696,7 @@ def read_csv(fn):
     new_data = {}
     for col, vals in d.items():
         try:
-            np.array(vals, dtype='int')
+            new_data[col] = np.array(vals, dtype='int')
         except ValueError:
             try:
                 new_data[col] = np.array(vals, dtype='float')
