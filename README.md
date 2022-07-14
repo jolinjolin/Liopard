@@ -28,49 +28,51 @@ data = {'name': name, 'movie': movie, 'paid': paid, 'cost': cost}
 
 `df.head()`
 
-![][./images/1.png]
+![](./images/1.png)
 
 `df.columns`
 
-![][./images/2.png]
+![](./images/2.png)
 
 `df.shape`
 
-![][./images/3.png]
+![](./images/3.png)
 
 ## Selection
 
 `df[['name','movie']]`
 
-![][./images/4.png]
+![](./images/4.png)
 
 `df[[0,1], 'name']`
 
-![][./images/5.png]
+![](./images/5.png)
 
 ## Common manipulation
 
-`df['review'] = np.array([4,5,4])`
-`df['comment'] = 'good'`
-`df.rename({'review':'rating'})`
+```
+df['review'] = np.array([4,5,4])
+df['comment'] = 'good'
+df.rename({'review':'rating'})
+```
 
-![][./images/6.png]
+![](./images/6.png)
 
 ## Arithmetic operation
 
 `df[:,2:4]+1`
 
-![][./images/7.png]
+![](./images/7.png)
 
 ## Aggregation/non-aggregation methods
 
 `df.cumsum()`
 
-![][./images/8_1.png]
+![](./images/8_1.png)
 
 `df.sort_values(['paid', 'review'], asc=False)`
 
-![][./images/8_2.png]
+![](./images/8_2.png)
 
 ## Creating pivot table
 
@@ -82,9 +84,11 @@ my_df = liop.DataFrame({'colors':colors, 'shapes':shapes, 'sizes':sizes})
 my_df.pivot_table(rows='colors',columns='shapes', values='sizes', aggfunc='sum')
 ```
 
-![][./images/9.png]
+![](./images/9.png)
 
 `df.str.count('comment', 'good')`
+
+![](./images/10.png)
 
 
 
