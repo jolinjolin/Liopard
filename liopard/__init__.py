@@ -493,7 +493,77 @@ class DataFrame:
         return self[rows.tolist(), :]
 
     def pivot_table(self, rows=None, columns=None, values=None, aggfunc=None):
-        pass
+        if rows is None and columns is None:
+            raise ValueError('`rows` or `columns` cannot both be `None`')
+        if values is not None:
+            val_data = self._data[values]
+            if aggfunc is None:
+                raise ValueError(
+                    '`aggfunc` must be passed when `values` is provided.')
+        else:
+            if aggfunc is None:
+                aggfunc = 'size'
+                val_data = np.empty(len(self))
+            else:
+                raise ValueError('`aggfunc` is not valid `values` is None')
+
+        if rows is not None:
+            row_data = self._data[rows]
+        if columns is not None:
+            col_data = self._data[columns]
+        if rows is None:
+            pivot_type = 'columns'
+        elif columns is None:
+            pivot_type = 'rows'
+        else:
+            pivot_type = 'all'
+
+        from collections import defaultdict
+        d = defaultdict(list)
+        if pivot_type == 'columns':
+            for group, val in zip(col_data, val_data):
+                d[group].append(val)
+        elif pivot_type == 'rows':
+            for group, val in zip(row_data, val_data):
+                d[group].append(val)
+        else:
+            for group1, group2, val in zip(row_data, col_data, val_data):
+                d[(group1, group2)].append(val)
+
+        agg_dict = {}
+        for group, vals in d.items():
+            arr = np.array(vals)
+            method = getattr(np, aggfunc)
+            agg_dict[group] = method(arr)
+
+        new_data = {}
+        if pivot_type == 'columns':
+            for col in sorted(agg_dict):
+                vals = agg_dict[col]
+                new_data[col] = np.array([vals])
+        elif pivot_type == 'rows':
+            row_vals = np.array(list(agg_dict.keys()))
+            vals = np.array(list(agg_dict.values()))
+            index = np.argsort(row_vals)
+            new_data[rows] = row_vals[index]
+            new_data[aggfunc] = vals[index]
+        else:
+            row_set = set()
+            col_set = set()
+            for group in agg_dict:
+                row_set.add(group[0])
+                col_set.add(group[1])
+            row_list = sorted(row_set)
+            col_list = sorted(col_set)
+            new_data = {}
+            new_data[rows] = np.array(row_list)
+            for col in col_list:
+                new_vals = []
+                for row in row_list:
+                    new_val = agg_dict.get((row, col), np.nan)
+                    new_vals.append(new_val)
+                new_data[col] = np.array(new_vals)
+        return DataFrame(new_data)
 
     def _add_docs(self):
         agg_names = ['min', 'max', 'mean', 'median', 'sum', 'var',
