@@ -328,10 +328,24 @@ class DataFrame:
         return dfs
 
     def rename(self, columns):
-        pass
+        if not isinstance(columns, dict):
+            raise TypeError('`Columns` must be a dictionary')
+        new_data = {}
+        for col, value in self._data.items():
+            new_col = columns.get(col, col)
+            new_data[new_col] = value
+        return DataFrame(new_data)
 
     def drop(self, columns):
-        pass
+        if isinstance(columns, str):
+            columns = [columns]
+        elif not isinstance(columns, list):
+            raise TypeError('`Columns` must be a string or a list')
+        new_data = {}
+        for col, value in self._data.items():
+            if not col in columns:
+                new_data[col] = value
+        return DataFrame(new_data)
 
     def abs(self):
         return self._non_agg(np.abs)
@@ -355,16 +369,36 @@ class DataFrame:
         return self._non_agg(np.copy)
 
     def _non_agg(self, funcname, **kwargs):
-        pass
+        new_data = {}
+        for col, value in self._data.items():
+            if value.dtype.kind == 'O':
+                new_data[col] = value.copy()
+            else:
+                new_data[col] = funcname(value, **kwargs)
+        return DataFrame(new_data)
 
     def diff(self, n=1):
-        def func():
-            pass
+        def func(value):
+            value = value.astype('float')
+            value_shifted = np.roll(value, n)
+            value = value - value_shifted
+            if n >= 0:
+                value[:n] = np.nan
+            else:
+                value[n:] = np.nan
+            return value
         return self._non_agg(func)
 
     def pct_change(self, n=1):
-        def func():
-            pass
+        def func(value):
+            value = value.astype('float')
+            value_shifted = np.roll(value, n)
+            value = (value - value_shifted)/value_shifted
+            if n >= 0:
+                value[:n] = np.nan
+            else:
+                value[n:] = np.nan
+            return value
         return self._non_agg(func)
 
     def __add__(self, other):
@@ -422,13 +456,41 @@ class DataFrame:
         return self._oper('__eq__', other)
 
     def _oper(self, op, other):
-        pass
+        if isinstance(other, DataFrame):
+            if other.shape[1] != 1:
+                raise ValueError('`DataFrame` must be one column')
+            else:
+                other = next(iter(other._data.values()))
+        new_data = {}
+        for col, values in self._data.items():
+            method = getattr(values, op)
+            new_data[col] = method(other)
+        return DataFrame(new_data)
 
     def sort_values(self, by, asc=True):
-        pass
+        if isinstance(by, str):
+            index = np.argsort(self._data[by])
+        elif isinstance(by, list):
+            by = [self._data[col] for col in by[::-1]]
+            index = np.lexsort(by)
+        else:
+            raise TypeError('`by` must be a string or list')
+        if not asc:
+            index = index[::-1]
+
+        return self[index.tolist(), :]
 
     def sample(self, n=None, frac=None, replace=False, seed=None):
-        pass
+        if seed:
+            np.random.seed(seed)
+        if frac:
+            if frac <= 0:
+                raise ValueError('`frac` must be positive')
+            n = int(frac * len(self))
+        if not isinstance(n, int):
+            raise TypeError('`n` must be an integer')
+        rows = np.random.choice(range(len(self)), n, replace=replace)
+        return self[rows.tolist(), :]
 
     def pivot_table(self, rows=None, columns=None, values=None, aggfunc=None):
         pass
